@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local SQLite databases & temporary audio buffers
+*.db
+*.wav
+audio_buffer/
+diagrams/
+VoxFlow_Software_Engineering_Report.docx
+
+# IDE / OS settings
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
