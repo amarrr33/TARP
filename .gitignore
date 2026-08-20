@@ -6,9 +6,13 @@ __pycache__/
 # Local SQLite databases & temporary audio buffers
 *.db
 *.wav
-audio_buffer/
+audio_buffer/*
+!audio_buffer/.gitkeep
 diagrams/
-VoxFlow_Software_Engineering_Report.docx
+
+# Build & Temporary Scripts
+build_voxflow_report.py
+build_model_training_pdf.py
 
 # IDE / OS settings
 .vscode/

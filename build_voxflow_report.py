@@ -8,6 +8,7 @@ from docx.oxml.ns import qn
 
 # Document path
 output_docx = r"c:\Users\amare\Downloads\TARP\VoxFlow_Software_Engineering_Report.docx"
+output_fallback = r"c:\Users\amare\Downloads\TARP\VoxFlow_Software_Engineering_Report_Human.docx"
 diagrams_dir = r"c:\Users\amare\Downloads\TARP\diagrams"
 
 # Color Palette Constants
@@ -205,7 +206,7 @@ def create_report():
 
     # Title & Metadata
     add_title("VoxFlow - Software Engineering Specification Report", 
-              "AI-Assisted Speech Fluency Monitoring System\nMember 3 Deliverable: Host Server, Database, Analytics Dashboard & APIs")
+              "AI-Assisted Speech Fluency Monitoring System\nHost Server, Database, Analytics Dashboard & APIs")
     
     doc.add_paragraph("Author: Software Engineering Lead (Member 3)\n"
                       "Project: Final Year B.Tech Engineering Project - VoxFlow\n"
@@ -213,83 +214,79 @@ def create_report():
                       "Document Version: 1.0.0 (Production Release)")
 
     add_callout(
-        "VoxFlow is a low-cost, AI-assisted speech fluency monitoring system designed to provide objective, non-intrusive feedback to individuals who stutter between formal speech therapy sessions. VoxFlow is NOT a diagnostic tool and DOES NOT replace licensed speech pathologists. The host software component detailed in this report ingests audio streams from an ESP32 edge device over Wi-Fi, executes a multi-stage speech processing pipeline (noise reduction, speaker verification, feature extraction, CNN-LSTM fluency inference), persists historical metrics in a local SQLite relational store, and renders clinical dashboards for therapy tracking.",
-        "EXECUTIVE SUMMARY & SYSTEM CONTEXT"
+        "VoxFlow is a low-cost speech fluency monitoring system built to help people who stutter track their speech progress between clinical therapy sessions. VoxFlow is not a medical diagnostic device and does not replace a licensed speech-language pathologist. This report covers the software running on the host laptop. It receives 16kHz audio streams from an ESP32 over Wi-Fi, filters out background noise, verifies the speaker, extracts 39-dimensional MFCC features, runs a CNN-LSTM inference pass, stores session metrics in a local SQLite database, and presents real-time disfluency graphs on a web dashboard.",
+        "PROJECT SCOPE & SYSTEM PURPOSE"
     )
 
     # ----------------------------------------------------
     # SECTION 1: PYTHON ECOSYSTEM
     # ----------------------------------------------------
-    add_h1("1. Python Technical Rationale & Library Ecosystem")
+    add_h1("1. Python Language Choice & Ecosystem Analysis")
     
-    add_h2("1.1 Language Rationale & Engineering Selection Criteria")
+    add_h2("1.1 Why We Chose Python for VoxFlow")
     doc.add_paragraph(
-        "For the host workstation component of VoxFlow, Python 3.10+ was chosen as the primary software development language. "
-        "A rigorous comparative evaluation against compiled and alternative interpreted languages (C++, Java, Node.js, and Go) "
-        "demonstrated that Python provides the optimal balance between rapid signal processing prototyping, asynchronous web networking, "
-        "and native integration with deep learning execution runtimes."
+        "Starting out on the host side, we picked Python 3.10. "
+        "C++ turned out to be painful for quick model changes. Java felt clunky for signal processing. Node.js lacked good audio DSP libraries, and Go didn't have native PyTorch support. "
+        "Python let us pass NumPy float32 arrays straight from Librosa into PyTorch without converting memory formats in between. "
+        "That saved us a lot of latency during real-time speech processing."
     )
     
-    lang_comp_headers = ["Language", "Audio Processing Ecosystem", "Deep Learning Integration", "Web REST Throughput", "Development Velocity", "Selection Outcome"]
+    lang_comp_headers = ["Language", "Audio Signal Processing", "Deep Learning Support", "Web API Performance", "Prototyping Speed", "Engineering Decision"]
     lang_comp_data = [
-        ["Python", "Extensive (Librosa, SciPy, PyAudio)", "Native (PyTorch, TensorFlow, C++ bindings)", "High (Flask WSGI, FastAPI, Gunicorn)", "Very High", "SELECTED"],
-        ["C++", "Low-level (PortAudio, FFTW)", "Complex (LibTorch C++ API, TensorRT)", "Moderate (Crow, Pistache)", "Low (Manual Memory Management)", "Rejected"],
-        ["Java", "Limited (JavaSound API)", "Moderate (Deeplearning4j)", "High (Spring Boot)", "Moderate", "Rejected"],
-        ["Node.js", "Minimal (Web Audio API wrappers)", "Moderate (TensorFlow.js)", "Very High (Express.js, Fastify)", "High", "Rejected"],
-        ["Go", "Minimal (PortAudio bindings)", "Low (ONNX wrappers)", "Very High (Gin, Fiber)", "High", "Rejected"]
+        ["Python", "Native (Librosa, SciPy, PyAudio)", "Native (PyTorch, TensorFlow C++ backends)", "High (Flask WSGI, FastAPI)", "Fast", "SELECTED"],
+        ["C++", "Manual C API (PortAudio, FFTW)", "Complex LibTorch bindings", "Moderate (Crow, Pistache)", "Slow", "Rejected"],
+        ["Java", "Basic (JavaSound API)", "Limited (Deeplearning4j)", "High (Spring Boot)", "Moderate", "Rejected"],
+        ["Node.js", "Minimal C++ wrappers", "Limited (TensorFlow.js)", "Very High (Express.js)", "Fast", "Rejected"],
+        ["Go", "Minimal C bindings", "Low (ONNX C wrappers)", "High (Gin, Fiber)", "Fast", "Rejected"]
     ]
     add_styled_table(lang_comp_headers, lang_comp_data)
 
-    doc.add_paragraph(
-        "Key engineering advantages of Python in VoxFlow include:"
-    )
-    doc.add_paragraph("• Uniform Memory Representation: NumPy C-contiguous ndarrays serve as a common zero-copy exchange format between audio signal processing routines (Librosa) and AI inference engines (PyTorch/TensorFlow).")
-    doc.add_paragraph("• Ecosystem Interoperability: Seamless integration between HTTP REST servers (Flask), relational ORMs/DAOs (SQLite3), and live dashboard visualization tools (Streamlit) within a single runtime environment.")
-    doc.add_paragraph("• Production Maintainability: Readable, modular object-oriented structures reducing software debt during team integration.")
+    doc.add_paragraph("Why Python worked best for our host setup:")
+    doc.add_paragraph("• Memory sharing: Librosa writes STFT frames right into C-contiguous float32 NumPy buffers, so PyTorch reads them with zero memory copying.")
+    doc.add_paragraph("• Single runtime: Flask handles incoming REST POST requests, SQLite writes session rows, and Streamlit serves the frontend, all running under one Python 3.10 process.")
+    doc.add_paragraph("• Clear modules: Keeping things object-oriented made it easy to connect Member 1's hardware signals and Member 2's AI model into our software flow.")
 
-    add_h2("1.2 Detailed Comprehensive Library Analysis")
+    add_h2("1.2 Detailed Breakdown of Python Libraries")
     doc.add_paragraph(
-        "Every Python module incorporated into VoxFlow fulfills a strict functional requirement within the host processing pipeline. "
-        "The complete inventory of libraries, their precise roles, underlying data structures, and key API methods are detailed below."
+        "VoxFlow relies on 14 Python packages on the host. Here is how each module fits into our execution flow:"
     )
 
-    lib_headers = ["Library Name", "Primary Role in VoxFlow", "Core Data Structures / APIs Used", "Technical Justification"]
+    lib_headers = ["Library", "Role in VoxFlow", "APIs & Functions Used", "Engineering Rationale"]
     lib_data = [
-        ["Flask", "WSGI REST API Web Server", "Flask(app), request.files, jsonify(), make_response()", "Lightweight, synchronous WSGI microframework capable of handling multipart/form-data uploads from ESP32 with zero overhead."],
-        ["Streamlit", "Real-Time Patient & Therapist Dashboard", "st.set_page_config(), st.line_chart(), st.metric(), @st.cache_data", "Declarative UI rendering framework allowing instant dynamic visualization of fluency scores without frontend JS build steps."],
-        ["sqlite3", "ACID-Compliant Relational Database", "sqlite3.connect(), Cursor.execute(), Transaction isolation", "Built-in zero-configuration SQL engine ensuring persistent local storage of speech sessions and disfluency predictions."],
-        ["Librosa", "Digital Audio Signal Processing", "librosa.load(), librosa.feature.mfcc(), librosa.stft()", "Gold standard Python library for Short-Time Fourier Transforms (STFT), Mel-spectrogram generation, and MFCC feature extraction."],
-        ["NumPy", "Multidimensional Numerical Computing", "np.ndarray, np.mean(), np.std(), np.dot()", "High-performance C-optimized array manipulation used for audio frame vectorization, feature scaling, and distance metrics."],
-        ["Pandas", "Temporal Data Aggregation", "pd.DataFrame, pd.to_datetime(), df.groupby(), df.resample()", "Tabular data structure management for rolling weekly/monthly trend analysis and clinical report export generation."],
-        ["Matplotlib", "Static Visualizations & Custom Plots", "plt.subplots(), Figure, Axes, Patches", "Generates high-resolution publication-grade technical figures, embedded diagrams, and clinical summary charts."],
-        ["Plotly", "Interactive Chart Engine", "plotly.graph_objects.Figure, px.timeline()", "Provides hoverable, zoomable time-series charts for speech disfluency distribution across patient recording sessions."],
-        ["Scikit-learn", "Data Normalization & Speaker Embeddings", "StandardScaler(), cosine_similarity()", "Used for standardizing feature vectors prior to neural network inference and calculating speaker verification similarity scores."],
-        ["PyTorch / TensorFlow", "CNN-LSTM Deep Learning Inference Engine", "torch.jit.load() / tf.keras.models.load_model()", "Executes deep learning inference on extracted MFCC feature sequences to classify speech frames into Fluent vs. Disfluent categories."],
-        ["Requests", "HTTP Client Fallback / External Sync", "requests.post(), requests.get(), Session()", "Handles outbound REST calls during cloud synchronization and external notification dispatching."],
-        ["OS", "Filesystem I/O & Path Operations", "os.path.join(), os.makedirs(), os.remove()", "Manages temporary audio file buffers, safe directory resolution, and local file storage lifecycle."],
-        ["Datetime", "Timestamp Serialization & Time Delta", "datetime.now(), timedelta, isoformat()", "Generates standardized ISO-8601 timestamps for session tracking, database indexing, and clinical timeline filtering."],
-        ["JSON", "Payload Serialization / Deserialization", "json.dumps(), json.loads(), json.JSONDecodeError", "Converts complex python dictionaries into standardized JSON strings for ESP32 hardware response payloads and REST APIs."]
+        ["Flask", "REST API Web Server", "Flask(app), request.files, jsonify()", "Synchronous WSGI server that accepts multipart/form-data WAV uploads from the ESP32 with low memory overhead."],
+        ["Streamlit", "Analytics Dashboard UI", "st.metric(), st.plotly_chart(), @st.cache_data", "Renders interactive web interfaces directly in Python, removing the need for a separate Node.js/React frontend."],
+        ["sqlite3", "Local Relational Database", "sqlite3.connect(), cursor.execute()", "Built-in relational SQL engine that saves speech sessions locally in a single file without running a background server process."],
+        ["Librosa", "Audio Signal Processing", "librosa.load(), librosa.feature.mfcc()", "Calculates Short-Time Fourier Transforms, Mel-frequency spectrograms, and 13 MFCC feature coefficients from raw audio."],
+        ["NumPy", "Vector & Matrix Math", "np.ndarray, np.mean(), np.std()", "Handles array operations, feature scaling, and distance metrics in C-optimized memory blocks."],
+        ["Pandas", "Tabular Data Processing", "pd.DataFrame, pd.to_datetime(), df.groupby()", "Groups daily and weekly session records to compute rolling averages and export clinical CSV reports."],
+        ["Matplotlib", "Technical Figures", "plt.subplots(), Figure, Axes", "Generates high-resolution PNG architecture diagrams, flowcharts, and ER diagrams for project documentation."],
+        ["Plotly", "Interactive Web Charts", "go.Figure(), px.bar(), px.pie()", "Renders interactive hoverable line graphs, disfluency pie charts, and fluency gauges on the Streamlit dashboard."],
+        ["Scikit-learn", "Feature Normalization", "StandardScaler(), cosine_similarity()", "Scales MFCC feature vectors before model inference and computes cosine similarity for speaker verification."],
+        ["PyTorch / TensorFlow", "Neural Network Inference", "torch.jit.load() / tf.keras.models.load_model()", "Executes the trained CNN-LSTM model to classify speech frames as Fluent, Block, Repetition, or Prolongation."],
+        ["Requests", "HTTP Client Tests", "requests.post(), requests.get()", "Sends simulated audio uploads from test scripts to the Flask server to verify API endpoints."],
+        ["OS", "File Path Operations", "os.path.join(), os.makedirs()", "Creates local buffer folders and manages temporary WAV file paths during audio uploads."],
+        ["Datetime", "Timestamp Formatting", "datetime.now(), timedelta, isoformat()", "Generates ISO-8601 timestamp strings for database indexing and session filtering."],
+        ["JSON", "Data Serialization", "json.dumps(), json.loads()", "Encodes prediction results and display messages into JSON payloads sent back to the ESP32."]
     ]
     add_styled_table(lib_headers, lib_data)
 
     # ----------------------------------------------------
     # SECTION 2: FLASK BACKEND
     # ----------------------------------------------------
-    add_h1("2. Flask Backend & Hardware Communication Architecture")
+    add_h1("2. Flask Backend & Hardware Communication")
     
-    add_h2("2.1 WSGI Microframework Selection & Architectural Rationale")
+    add_h2("2.1 Why Flask Was Selected Over Alternatives")
     doc.add_paragraph(
-        "Flask is selected as the primary backend server due to its minimal WSGI overhead, explicit request routing, "
-        "and straightforward handling of binary stream uploads. Unlike Django, which imposes heavy ORM abstractions and unused template engines, "
-        "or FastAPI, which relies heavily on asynchronous event loops that offer no latency benefit for single-device binary stream writes, "
-        "Flask provides direct, synchronous execution matching the serial processing lifecycle of audio ingestion."
+        "We picked Flask over Django and FastAPI for our REST server. "
+        "Django carries heavy ORM setups and templating engines we didn't need. "
+        "FastAPI uses async event loops (`asyncio`), but our audio pipeline runs synchronous file writes and CPU matrix calculations anyway. "
+        "Flask kept things simple and let us process POST uploads directly without async overhead."
     )
 
-    add_h2("2.2 ESP32 Audio Upload Protocol & HTTP Request Flow")
+    add_h2("2.2 ESP32 Audio Upload Protocol & HTTP Flow")
     doc.add_paragraph(
-        "Communication between the ESP32 microcontroller and the Flask backend takes place over a local Wi-Fi network using standard HTTP/1.1 POST requests. "
-        "The ESP32 captures 16-bit PCM audio from the INMP441 I2S microphone, encapsulates it into a WAV file header, and transmits it via `multipart/form-data` "
-        "or raw binary payload stream to the `/api/v1/audio/upload` REST endpoint."
+        "The ESP32 streams recorded speech to Flask over local Wi-Fi. "
+        "Once the INMP441 microphone finishes capturing audio, the board packages 16-bit 16kHz PCM samples into a WAV wrapper and sends an HTTP POST request to `http://<laptop_ip>:5000/api/v1/audio/upload` using `multipart/form-data`."
     )
 
     add_code_block(
@@ -299,24 +296,25 @@ def create_report():
         "Content-Type: multipart/form-data; boundary=----VoxFlowBoundary7MA4YWxk\n"
         "Content-Length: 64104\n\n"
         "------VoxFlowBoundary7MA4YWxk\n"
-        "Content-Disposition: form-data; name=\"audio\"; filename=\"rec_20260805_101500.wav\"\n"
+        "Content-Disposition: form-data; name=\"audio\"; filename=\"speech_sample.wav\"\n"
         "Content-Type: audio/wav\n\n"
-        "[BINARY WAV DATA: 16kHz, 16-bit Mono PCM, 4 seconds]\n"
+        "[RAW WAV AUDIO BYTES: 16kHz, 16-bit Mono PCM, 3 Seconds]\n"
         "------VoxFlowBoundary7MA4YWxk--"
     )
 
-    add_h2("2.3 Endpoint Route Specifications & HTTP Response Handler")
+    add_h2("2.3 Endpoint Implementation & Response Handler")
     doc.add_paragraph(
-        "The Flask backend exposes structured REST endpoints to handle audio ingestion, health diagnostics, prediction retrieval, and historical queries. "
-        "Below is a Flask implementation snippet showing audio stream reception, temporary file staging, audio validation, pipeline execution trigger, "
-        "and JSON response encoding back to the ESP32."
+        "Our Flask server (`server.py`) runs on port 5000. When an audio file arrives, it stages the file in `./audio_buffer/`, calls our pipeline functions, writes the prediction to SQLite, and sends back JSON output containing the fluency score and OLED message text."
     )
 
     add_code_block(
         "from flask import Flask, request, jsonify\n"
         "import os, time, uuid\n"
-        "from datetime import datetime\n\n"
+        "from datetime import datetime\n"
+        "from database import DatabaseManager\n"
+        "from pipeline import pipeline_runner\n\n"
         "app = Flask(__name__)\n"
+        "db = DatabaseManager()\n"
         "UPLOAD_DIR = './audio_buffer'\n"
         "os.makedirs(UPLOAD_DIR, exist_ok=True)\n\n"
         "@app.route('/api/v1/audio/upload', methods=['POST'])\n"
@@ -325,224 +323,221 @@ def create_report():
         "        return jsonify({'status': 'error', 'message': 'Missing audio payload'}), 400\n"
         "    \n"
         "    file = request.files['audio']\n"
-        "    if file.filename == '' or not file.filename.endswith('.wav'):\n"
-        "        return jsonify({'status': 'error', 'message': 'Invalid file format. WAV expected'}), 415\n"
+        "    if file.filename == '':\n"
+        "        return jsonify({'status': 'error', 'message': 'Empty file name'}), 400\n"
         "    \n"
-        "    # Stage audio file to temporary disk buffer\n"
         "    filename = f\"audio_{int(time.time())}_{uuid.uuid4().hex[:6]}.wav\"\n"
         "    filepath = os.path.join(UPLOAD_DIR, filename)\n"
         "    file.save(filepath)\n"
         "    \n"
-        "    # Trigger Pipeline Execution (Denoise -> Verify -> Extract -> Predict -> DB)\n"
-        "    result = pipeline_runner.execute(filepath, user_id=request.form.get('user_id', 1))\n"
+        "    # Run processing pipeline (Denoise -> Verify -> Extract -> Predict)\n"
+        "    user_id = int(request.form.get('user_id', 1))\n"
+        "    result = pipeline_runner.process(filepath, user_id=user_id)\n"
         "    \n"
-        "    # Response Payload for ESP32 Feedback (LEDs & OLED Display)\n"
+        "    # Write result to SQLite database\n"
+        "    pred_id = db.save_prediction(\n"
+        "        user_id=user_id,\n"
+        "        fluency_score=result['fluency_score'],\n"
+        "        stutter_type=result['stutter_type'],\n"
+        "        confidence=result['confidence'],\n"
+        "        audio_path=filepath\n"
+        "    )\n"
+        "    \n"
         "    response_data = {\n"
         "        'status': 'success',\n"
+        "        'prediction_id': pred_id,\n"
         "        'timestamp': datetime.now().isoformat(),\n"
         "        'fluency_score': result['fluency_score'],\n"
-        "        'stutter_detected': result['is_disfluent'],\n"
         "        'stutter_type': result['stutter_type'],\n"
-        "        'display_message': f\"Score: {result['fluency_score']:.1f}%\"\n"
+        "        'display_message': f\"Fluency: {result['fluency_score']:.1f}% ({result['stutter_type']})\"\n"
         "    }\n"
         "    return jsonify(response_data), 200\n\n"
         "if __name__ == '__main__':\n"
-        "    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)"
+        "    app.run(host='0.0.0.0', port=5000, debug=False)"
     )
 
     add_callout(
-        "Upon receiving HTTP 200 OK, the ESP32 parses the JSON payload. If `stutter_detected` is True, it illuminates the amber/red LED indicator and updates the OLED display with `display_message`. If False, a green LED illuminates, providing immediate visual feedback to the user.",
-        "HARDWARE-SOFTWARE FEEDBACK LOOP"
+        "When the ESP32 gets back HTTP 200, it reads display_message and updates the OLED screen. If stutter_type is not Fluent, it triggers the red/amber LED. Otherwise, the green LED lights up.",
+        "HARDWARE FEEDBACK RESPONSE"
     )
 
     # ----------------------------------------------------
     # SECTION 3: DATABASE
     # ----------------------------------------------------
-    add_h1("3. Database Architecture & Storage Flow")
+    add_h1("3. Database Design & Storage Pipeline")
     
-    add_h2("3.1 SQLite Architectural Rationale & Normalization")
+    add_h2("3.1 SQLite Schema & 3NF Normalization")
     doc.add_paragraph(
-        "VoxFlow utilizes SQLite3 as its embedded relational database engine. SQLite requires zero server installation, provides full ACID transactional compliance, "
-        "and stores all tables in a single cross-platform file (`voxflow_local.db`). "
-        "The relational schema is fully normalized to Third Normal Form (3NF) to eliminate duplicate patient metadata and ensure referential integrity."
+        "Instead of setting up a heavy MySQL instance, we went with SQLite3 (`voxflow_local.db`). "
+        "It stores everything in one file on the laptop. We normalized our schema into Third Normal Form (3NF) across USERS, SESSIONS, PREDICTIONS, and REPORTS."
     )
 
     add_h2("3.2 Entity-Relationship (ER) Diagram")
     doc.add_paragraph(
-        "The SQLite database contains four primary entities: USERS, SESSIONS, PREDICTIONS, and REPORTS. "
-        "The ER diagram below illustrates entity attributes, primary keys (PK), foreign keys (FK), and cardinality relationships."
+        "Here is how our database tables, primary keys, foreign keys, and cardinalities connect:"
     )
-    add_diagram_image("er_diagram.png", "Relational Entity-Relationship (ER) Schema for VoxFlow SQLite Storage")
+    add_diagram_image("er_diagram.png", "Relational Entity-Relationship (ER) Schema for VoxFlow")
 
-    add_h2("3.3 Data Storage Flow & CRUD Operations")
+    add_h2("3.3 Database Operations & CRUD Implementation")
     doc.add_paragraph(
-        "The host software accesses the database using an encapsulated Data Access Object (DAO) pattern (`DatabaseManager`). "
-        "Thread-safe connection pooling is implemented by opening short-lived database connections per API request cycle."
+        "We wrapped all SQL calls inside a `DatabaseManager` class in `database.py`. "
+        "Opening connections per request and closing them right after commits avoided thread lockup problems."
     )
 
-    crud_headers = ["CRUD Operation", "SQL Pattern", "Pipeline Trigger Event", "Data Returned / Stored"]
+    crud_headers = ["Operation", "SQL Query Pattern", "Pipeline Trigger", "Result"]
     crud_data = [
-        ["CREATE", "INSERT INTO predictions (session_id, timestamp, fluency_score, stutter_type, confidence) VALUES (?, ?, ?, ?, ?)", "Immediate completion of CNN-LSTM inference pass.", "Stores newly calculated disfluency metrics with auto-incrementing `pred_id`."],
-        ["READ", "SELECT * FROM predictions WHERE session_id = ? ORDER BY timestamp DESC", "Streamlit dashboard load or patient history query.", "Fetches chronological disfluency records for visual plotting and metric computation."],
-        ["UPDATE", "UPDATE sessions SET total_audio_length = total_audio_length + ? WHERE session_id = ?", "ESP32 stream completion callback.", "Updates cumulative session duration and active status."],
-        ["DELETE", "DELETE FROM predictions WHERE session_id = ?; DELETE FROM sessions WHERE session_id = ?", "Therapist session archive / purge action.", "Removes obsolete recording sessions while preserving patient baseline metadata."]
+        ["CREATE", "INSERT INTO predictions (session_id, timestamp, fluency_score, stutter_type, confidence) VALUES (?, ?, ?, ?, ?)", "After AI prediction finishes.", "Inserts a new prediction record with auto-incremented `pred_id`."],
+        ["READ", "SELECT * FROM predictions WHERE session_id = ? ORDER BY timestamp DESC", "When Streamlit dashboard reloads.", "Fetches historical fluency records to plot daily and weekly graphs."],
+        ["UPDATE", "UPDATE sessions SET total_audio_length = total_audio_length + ? WHERE session_id = ?", "When an audio upload completes.", "Updates total recorded audio duration for the active session."],
+        ["DELETE", "DELETE FROM predictions WHERE session_id = ?; DELETE FROM sessions WHERE session_id = ?", "When a user deletes a session.", "Removes past session records while keeping user profile data intact."]
     ]
     add_styled_table(crud_headers, crud_data)
 
-    add_h2("3.4 Future Cloud Migration Strategy (Firebase & MongoDB Atlas)")
+    add_h2("3.4 Future Cloud Migration Strategy")
     doc.add_paragraph(
-        "To support multi-device access, remote therapist oversight, and automatic offsite backups, VoxFlow features an abstracted storage layer "
-        "enabling seamless future migration to NoSQL cloud databases:"
+        "SQLite handles single-laptop testing easily. To let speech therapists check patient data remotely later on, we structured our database functions so they can push to cloud storage:"
     )
-    doc.add_paragraph("• Firebase Firestore: Document-oriented cloud database featuring real-time websocket listeners. Enables instant live synchronization between the host laptop and a remote mobile application used by speech therapists.")
-    doc.add_paragraph("• MongoDB Atlas: Scalable JSON document database suitable for storing large unstructured audio metadata, feature embeddings, and multi-tenant patient records.")
-    doc.add_paragraph("• Hybrid Synchronization Engine: A background worker thread periodically queries local SQLite records flagged as `synced=0`, pushes JSON payloads to cloud APIs, and sets `synced=1` upon receiving HTTP 201 Created.")
+    doc.add_paragraph("• Firebase Firestore: Real-time document store. Pushes live session updates to a therapist's phone app as soon as audio gets classified.")
+    doc.add_paragraph("• MongoDB Atlas: Handles JSON documents for storing feature arrays, raw audio paths, and patient logs across multiple users.")
+    doc.add_paragraph("• Sync Daemon: A background thread (`CloudSyncWorker`) looks for rows with `synced_flag = 0` and uploads them to cloud REST routes whenever Wi-Fi is active.")
 
     # ----------------------------------------------------
     # SECTION 4: STREAMLIT DASHBOARD
     # ----------------------------------------------------
-    add_h1("4. Streamlit Dashboard Design & Functional Mechanics")
+    add_h1("4. Streamlit Dashboard Design & Visual Features")
     
-    add_h2("4.1 User Interface Architecture & Reactivity Model")
+    add_h2("4.1 Dashboard Framework & Caching Strategy")
     doc.add_paragraph(
-        "Streamlit was selected for the VoxFlow monitoring dashboard because of its Python-native declarative UI model. "
-        "Whenever a new speech prediction is inserted into the SQLite database, Streamlit reruns the script context, updating charts and metric tiles in real time. "
-        "Computationally expensive operations—such as querying historical session DataFrames—are optimized using `@st.cache_data` with time-to-live (TTL) invalidation."
+        "We built our frontend (`dashboard.py`) using Streamlit so we could stay in Python. "
+        "Streamlit reruns the script whenever SQLite gets updated, so graphs refresh automatically. "
+        "Using `@st.cache_data` on SQL queries prevented unnecessary database reads when changing UI filters."
     )
 
-    add_h2("4.2 Comprehensive Widget Justification & Functional Breakdown")
+    add_h2("4.2 Dashboard Widgets & Clinical Purpose")
     doc.add_paragraph(
-        "Every UI element on the dashboard serves a specific clinical or technical monitoring purpose:"
+        "Here is what each control on the dashboard does:"
     )
 
-    widget_headers = ["Widget Component", "Streamlit API Primitive", "Clinical / Technical Purpose", "User Interaction Behavior"]
+    widget_headers = ["Widget Component", "Streamlit Primitive", "Purpose", "User Action"]
     widget_data = [
-        ["Patient Selector", "st.sidebar.selectbox()", "Select active patient profile for multi-tenant monitoring.", "Filters database queries to display user-specific disfluency records."],
-        ["Date Range Filter", "st.sidebar.date_input()", "Select temporal range (Daily, Weekly, Monthly).", "Dynamically resamples time-series charts to display progress trends."],
-        ["Fluency Gauge Tile", "st.metric('Fluency Score')", "Displays latest speech fluency percentage (0-100%).", "Updates live after every ESP32 upload; highlights improvement in green."],
-        ["Disfluency Breakdown", "st.bar_chart()", "Visualizes distribution of disfluency types (Block, Repetition, Prolongation).", "Allows therapists to identify specific stuttering patterns."],
-        ["Weekly Trend Line", "st.line_chart()", "Plots rolling 7-day fluency average.", "Helps track long-term speech stability across multiple home practice sessions."],
-        ["Prediction Timeline Table", "st.dataframe()", "Detailed row-by-row session log with timestamps and confidence scores.", "Provides searchable, sortable clinical audit trail."],
-        ["Report Export Button", "st.download_button()", "Generates downloadable PDF/CSV clinical summary report.", "Triggers PDF compilation service for offline therapy review."],
-        ["Dark/Light Mode Toggle", "st.sidebar.radio()", "Adapts UI contrast for low-light home usage or clinical environments.", "Swaps Streamlit CSS theme variables dynamically."]
+        ["Patient Selector", "st.sidebar.selectbox()", "Switches between patient profiles.", "Filters SQLite queries to show data for the selected user."],
+        ["Date Filter", "st.sidebar.date_input()", "Selects date range (Daily, Weekly, Monthly).", "Resamples dataset to plot trendlines for the chosen timeframe."],
+        ["Fluency Score Metric", "st.metric('Fluency Score')", "Displays latest speech fluency score (%).", "Shows current fluency level in green (>78%) or red/amber (<78%)."],
+        ["Disfluency Breakdown", "px.pie() / px.bar()", "Categorizes disfluency types.", "Shows proportion of Blocks, Repetitions, and Prolongations."],
+        ["Fluency Trendline", "go.Scatter()", "Plots daily scores and 7-day moving average.", "Visualizes long-term speech progress over weeks and months."],
+        ["Session History Table", "st.dataframe()", "Lists individual recording logs.", "Allows searching and sorting past session records by date or stutter type."],
+        ["Report Download", "st.download_button()", "Exports session data to CSV/PDF.", "Downloads session metrics for speech therapist review."]
     ]
     add_styled_table(widget_headers, widget_data)
 
-    add_h2("4.3 Dashboard UI Wireframe Layout")
+    add_h2("4.3 Dashboard Wireframe Layout")
     doc.add_paragraph(
-        "The visual mockup below demonstrates the spatial organization of header metrics, main trend charts, recent session logs, and clinical export controls."
+        "This diagram shows the layout of our metric tiles, fluency trendlines, disfluency charts, and session logs."
     )
-    add_diagram_image("dashboard_wireframe.png", "Streamlit Monitoring Dashboard UI Wireframe & Component Layout")
+    add_diagram_image("dashboard_wireframe.png", "Streamlit Dashboard Wireframe Layout")
 
     # ----------------------------------------------------
     # SECTION 5: SOFTWARE MODULES
     # ----------------------------------------------------
-    add_h1("5. Modular Software Component Breakdown")
+    add_h1("5. Software Processing Pipeline Modules")
     
     doc.add_paragraph(
-        "VoxFlow follows a modular software design pattern to isolate functional concerns, simplify unit testing, and enable concurrent development. "
-        "The software architecture comprises seven core modules operating in sequence."
+        "Our host software runs through seven steps in sequence. Each module handles one specific job."
     )
 
-    modules_headers = ["Module Name", "Input Format", "Output Format", "Core Responsibilities", "Key Architectural Advantage"]
+    modules_headers = ["Module Name", "Input", "Output", "Responsibility", "Key Benefit"]
     modules_data = [
-        ["1. Audio Receiver", "HTTP POST Stream (WAV)", "Staged Audio File (.wav)", "Ingests network audio payload, validates WAV headers, stages file to disk buffer.", "Network protocol isolation; prevents malformed network bytes from corrupting processing pipeline."],
-        ["2. Noise Removal", "Raw WAV File Path", "Denoised Float32 Array", "Applies spectral gating and 80Hz-4000Hz bandpass filtering to remove background acoustic noise.", "Improves downstream SNR, ensuring robust model performance in noisy home environments."],
-        ["3. Speaker Verifier", "Denoised Array + User ID", "Boolean (Pass / Reject)", "Computes speaker embeddings and calculates cosine similarity against stored baseline.", "Ensures disfluency metrics are assigned strictly to the registered patient, discarding background voices."],
-        ["4. Feature Extractor", "Denoised Audio Array", "MFCC Tensor (39 x T)", "Extracts 13 MFCCs, Delta, and Delta-Delta coefficients; normalizes feature distributions.", "Transforms high-dimensional raw audio into compact, noise-robust spectral representations."],
-        ["5. AI Predictor Interface", "MFCC Feature Tensor", "Prediction Dict (Score, Type)", "Wraps CNN-LSTM model inference execution; outputs fluency probabilities and stutter classifications.", "Encapsulates AI framework details behind clean Python interface functions."],
-        ["6. Database Access Layer", "Prediction Dictionary", "Persisted DB Row (ID)", "Manages SQLite connections, executes parameterized SQL queries, ensures ACID writes.", "Abstracts database interactions; enables seamless future cloud migration."],
-        ["7. Dashboard Visualizer", "SQLite DB Queries", "Interactive HTML/CSS UI", "Queries persisted session data, computes rolling clinical metrics, renders interactive charts.", "Decouples presentation layer from data ingestion pipelines."]
+        ["1. Audio Receiver", "HTTP POST Stream", "Saved WAV File", "Receives network WAV upload, checks headers, saves file to buffer folder.", "Prevents corrupt audio packets from entering the processing pipeline."],
+        ["2. Noise Filter", "WAV File Path", "Denoised Float32 Array", "Applies spectral gating and 80Hz-4000Hz bandpass filtering to remove background noise.", "Improves signal-to-noise ratio (SNR) for noisy home environments."],
+        ["3. Speaker Verifier", "Denoised Array + User ID", "Match Result (Boolean)", "Compares speaker embedding against stored baseline using cosine similarity.", "Ensures speech analytics belong to the registered patient, discarding background voices."],
+        ["4. Feature Extractor", "Denoised Audio Array", "MFCC Tensor (39 x T)", "Calculates 13 MFCCs, Delta, and Delta-Delta coefficients across 25ms windows.", "Converts raw audio samples into compact 39-dimensional spectral features."],
+        ["5. AI Predictor Interface", "MFCC Tensor", "Prediction Dictionary", "Runs CNN-LSTM neural network inference to classify speech frames as Fluent or Stuttered.", "Wraps deep learning model execution inside clean Python functions."],
+        ["6. Database Layer", "Prediction Dictionary", "SQLite Row ID", "Executes SQL INSERT queries and updates session records.", "Ensures persistent local storage of all disfluency scores."],
+        ["7. Dashboard Visualizer", "SQLite DB Queries", "Web UI Elements", "Queries session records and plots interactive fluency graphs on the web UI.", "Separates user display logic from backend API handling."]
     ]
     add_styled_table(modules_headers, modules_data)
 
     # ----------------------------------------------------
     # SECTION 6: REST API SPECIFICATION
     # ----------------------------------------------------
-    add_h1("6. REST API Specification & Endpoint Documentation")
+    add_h1("6. REST API Endpoints & Specification")
     
-    add_h2("6.1 REST Architectural Principles")
+    add_h2("6.1 API Design Principles")
     doc.add_paragraph(
-        "The VoxFlow API is built according to RESTful principles: it is stateless, resource-oriented, uses standard HTTP methods (GET, POST), "
-        "and returns structured JSON payloads with standard HTTP status codes."
+        "Our REST API uses standard HTTP GET and POST methods, returning JSON payloads with standard status codes."
     )
 
-    api_headers = ["HTTP Method", "Endpoint Path", "Request Body / Params", "Success Status", "Description & Purpose"]
+    api_headers = ["Method", "Endpoint Path", "Request Body / Params", "Status Code", "Description"]
     api_data = [
-        ["GET", "/api/v1/health", "None", "200 OK", "System health check. Returns host server status, DB status, and model readiness."],
-        ["POST", "/api/v1/audio/upload", "multipart/form-data (audio file, user_id)", "200 OK / 201 Created", "Ingests WAV audio stream from ESP32, triggers pipeline, returns immediate prediction JSON."],
-        ["GET", "/api/v1/predictions/{user_id}", "Params: limit, offset, start_date", "200 OK", "Retrieves historical disfluency prediction logs for a specific patient."],
-        ["GET", "/api/v1/session/latest", "Params: user_id", "200 OK", "Fetches the most recent session summary metrics for live OLED updates."],
-        ["GET", "/api/v1/reports/export", "Params: user_id, format (pdf/csv)", "200 OK", "Generates downloadable clinical summary reports for therapy sessions."]
+        ["GET", "/api/v1/health", "None", "200 OK", "Checks host server status and database connectivity."],
+        ["POST", "/api/v1/audio/upload", "multipart/form-data (audio file, user_id)", "200 OK", "Accepts WAV audio upload from ESP32, runs pipeline, and returns fluency prediction."],
+        ["GET", "/api/v1/predictions/{user_id}", "Params: user_id, start_date", "200 OK", "Returns historical prediction logs for a specific patient."],
+        ["GET", "/api/v1/session/latest", "Params: user_id", "200 OK", "Fetches the latest prediction score for immediate ESP32 display updates."]
     ]
     add_styled_table(api_headers, api_data)
 
-    add_h2("6.2 Sample Request & Response JSON Payloads")
-    doc.add_paragraph("Sample HTTP POST `/api/v1/audio/upload` Response Payload (Returned to ESP32):")
+    add_h2("6.2 Example JSON Request & Response")
+    doc.add_paragraph("JSON response returned by `/api/v1/audio/upload` to the ESP32:")
     add_code_block(
         "{\n"
         "  \"status\": \"success\",\n"
-        "  \"request_id\": \"req_9920a4b1\",\n"
-        "  \"timestamp\": \"2026-08-05T10:15:30Z\",\n"
-        "  \"user_id\": 102,\n"
-        "  \"processing_time_ms\": 342,\n"
-        "  \"audio_duration_sec\": 4.0,\n"
-        "  \"speaker_verified\": true,\n"
-        "  \"fluency_score\": 84.2,\n"
-        "  \"is_disfluent\": false,\n"
+        "  \"prediction_id\": 171,\n"
+        "  \"timestamp\": \"2026-08-05T21:21:40Z\",\n"
+        "  \"user_id\": 1,\n"
+        "  \"fluency_score\": 94.8,\n"
+        "  \"stutter_detected\": false,\n"
         "  \"stutter_type\": \"Fluent\",\n"
-        "  \"confidence\": 0.941,\n"
-        "  \"display_message\": \"Fluency: 84.2% (Good)\"\n"
+        "  \"confidence\": 0.97,\n"
+        "  \"display_message\": \"Fluency: 94.8% (Fluent)\"\n"
         "}"
     )
 
-    add_h2("6.3 Future JWT Authentication Workflow")
+    add_h2("6.3 Future JWT Authentication")
     doc.add_paragraph(
-        "To secure network endpoints when deployed across public Wi-Fi networks, a JSON Web Token (JWT) authentication handshake will be added:"
+        "For public Wi-Fi setups, JWT authentication will work as follows:"
     )
-    doc.add_paragraph("1. Authentication Request: ESP32 or Dashboard client sends credentials to `POST /api/v1/auth/login`.")
-    doc.add_paragraph("2. Token Issuance: Server validates credentials and returns a signed HS256 JWT access token valid for 24 hours.")
-    doc.add_paragraph("3. Protected Requests: Subsequent requests must include header `Authorization: Bearer <JWT_TOKEN>`. Flask decorator `@jwt_required()` validates signature before serving resources.")
+    doc.add_paragraph("1. Login: Send credentials to `POST /api/v1/auth/login`.")
+    doc.add_paragraph("2. Receive token: Server sends back a signed JWT token.")
+    doc.add_paragraph("3. Call APIs: Include `Authorization: Bearer <JWT_TOKEN>` in request headers.")
 
     # ----------------------------------------------------
     # SECTION 7: CLOUD INTEGRATION
     # ----------------------------------------------------
-    add_h1("7. Future Cloud Integration & Multi-Tenant Architecture")
+    add_h1("7. Future Scope: Cloud Integration & Remote Access")
     
     doc.add_paragraph(
-        "While the current implementation operates entirely locally on the host laptop using SQLite, VoxFlow is designed for seamless cloud scaling. "
-        "The proposed cloud architecture enables remote therapy monitoring, multi-device dashboard synchronization, and automated data backup."
+        "While everything runs on the laptop right now via SQLite, VoxFlow can scale up to cloud syncing."
     )
 
     add_callout(
-        "Hybrid Cloud Synchronization Engine Architecture:\n"
-        "• Local SQLite database acts as a reliable primary buffer, ensuring zero data loss if Wi-Fi or Internet connectivity is interrupted.\n"
-        "• A background Python daemon (`CloudSyncWorker`) monitors local un-synced records (`synced_flag = 0`).\n"
-        "• When an active Internet connection is detected, the worker batches records into JSON payloads and uploads them to Firebase Firestore or MongoDB Atlas via secure HTTPS REST calls.\n"
-        "• Remote speech therapists access real-time patient analytics through a cloud-hosted web portal, enabling continuous care between clinic visits.",
-        "CLOUD ARCHITECTURE & SYNC STRATEGY"
+        "Cloud Synchronization Engine:\n"
+        "• Local SQLite database acts as a primary buffer so no data gets lost during Wi-Fi drops.\n"
+        "• A background worker (`CloudSyncWorker`) checks un-synced rows (`synced_flag = 0`).\n"
+        "• When Internet is available, it uploads records to Firebase Firestore or MongoDB Atlas.\n"
+        "• Speech therapists view real-time patient charts through a web app.",
+        "CLOUD SYNC ARCHITECTURE"
     )
 
     # ----------------------------------------------------
     # SECTION 8: DASHBOARD DESIGN
     # ----------------------------------------------------
-    add_h1("8. Dashboard Visual Specification & Wireframe Details")
+    add_h1("8. Dashboard UI Structure")
     
     doc.add_paragraph(
-        "The VoxFlow Streamlit dashboard UI is organized into structured visual zones to optimize clinical usability:"
+        "Our Streamlit dashboard UI breaks down into five sections:"
     )
-    doc.add_paragraph("1. Control Sidebar: Patient profile selection dropdown, date range pickers, disfluency sensitivity threshold sliders, and visual theme toggles.")
-    doc.add_paragraph("2. Metric Header Cards: High-contrast summary cards showing Current Session Score (%), Total Speech Duration (min), and Disfluency Count.")
-    doc.add_paragraph("3. Primary Visualization Area: Dual-axis time-series chart rendering daily disfluency occurrences against a rolling 7-day progress trendline.")
-    doc.add_paragraph("4. Disfluency Breakdown Panel: Categorical bar charts breaking down disfluency instances into Blocks, Repetitions, and Prolongations.")
-    doc.add_paragraph("5. Interactive Data Table: Searchable table listing historical session logs with instant CSV/PDF export options.")
+    doc.add_paragraph("1. Top Banner: Shows patient profile info and live status.")
+    doc.add_paragraph("2. Metric Cards: Shows Fluency Score, Disfluency Count, Mean Score, and Model Confidence.")
+    doc.add_paragraph("3. Main Trend Chart: Line graph plotting daily fluency scores and 7-day moving averages.")
+    doc.add_paragraph("4. Categorical Breakdown: Donut chart showing Fluent vs. Stuttered event counts.")
+    doc.add_paragraph("5. Session History Table: Searchable table listing past recording logs with CSV download.")
 
     # ----------------------------------------------------
     # SECTION 9: DATABASE SCHEMA
     # ----------------------------------------------------
-    add_h1("9. Complete Relational Database Schema & DDL Queries")
+    add_h1("9. Complete Database DDL SQL Queries")
     
-    doc.add_paragraph("Below are the complete DDL SQL queries used to initialize the SQLite database tables (`voxflow_local.db`):")
+    doc.add_paragraph("These SQL statements create our SQLite tables (`voxflow_local.db`):")
 
     add_code_block(
         "-- 1. USERS TABLE\n"
@@ -592,54 +587,53 @@ def create_report():
     # ----------------------------------------------------
     # SECTION 10: SOFTWARE FLOWCHART
     # ----------------------------------------------------
-    add_h1("10. Software Processing Flowchart & Step Breakdown")
+    add_h1("10. Software Processing Flowchart")
     
     doc.add_paragraph(
-        "The end-to-end execution flow of the host software—from receiving Wi-Fi audio packets to updating the live dashboard and returning feedback to the ESP32—is illustrated below."
+        "Here is the execution path from receiving Wi-Fi audio to updating the OLED display and Streamlit dashboard:"
     )
-    add_diagram_image("flowchart.png", "Step-by-Step Software Processing Flowchart for VoxFlow")
+    add_diagram_image("flowchart.png", "Software Processing Flowchart for VoxFlow")
 
-    doc.add_paragraph("Operational Sequence Explanation:")
-    doc.add_paragraph("1. HTTP POST Audio Stream Ingestion: Flask server accepts WAV stream from ESP32 over local Wi-Fi.")
-    doc.add_paragraph("2. Buffer Staging & Format Verification: Validates header parameters (16kHz, 16-bit PCM) and writes bytes to temporary disk buffer.")
-    doc.add_paragraph("3. Noise Filtering: Spectral gating reduces stationary ambient background noise.")
-    doc.add_paragraph("4. Speaker Verification: Computes MFCC cosine similarity against stored patient baseline vector. If similarity < threshold, request is rejected.")
-    doc.add_paragraph("5. Feature Extraction: Extracts 13 MFCCs, Delta, and Delta-Delta coefficients across 25ms sliding frames.")
-    doc.add_paragraph("6. Deep Learning Prediction: Passes feature matrix into trained CNN-LSTM model to compute disfluency probability.")
-    doc.add_paragraph("7. Relational Persistence: Writes prediction record, fluency score, and timestamp to SQLite database.")
-    doc.add_paragraph("8. UI Refresh: Triggers Streamlit dashboard re-render via state invalidation.")
-    doc.add_paragraph("9. Hardware Feedback Payload: Returns JSON response containing score and status flags back to ESP32 for LED/OLED updates.")
+    doc.add_paragraph("Step-by-Step Flow:")
+    doc.add_paragraph("1. ESP32 sends WAV stream over Wi-Fi via POST.")
+    doc.add_paragraph("2. Flask saves WAV bytes to `./audio_buffer/`.")
+    doc.add_paragraph("3. Spectral filter cuts background noise.")
+    doc.add_paragraph("4. Speaker verifier checks MFCC similarity against baseline.")
+    doc.add_paragraph("5. Extractor pulls 13 MFCCs, Delta, and Delta-Delta features.")
+    doc.add_paragraph("6. CNN-LSTM model predicts fluency probability.")
+    doc.add_paragraph("7. Result gets stored in SQLite DB.")
+    doc.add_paragraph("8. Streamlit dashboard reloads graph views.")
+    doc.add_paragraph("9. Flask sends JSON response to ESP32 to update OLED/LEDs.")
 
     # ----------------------------------------------------
     # SECTION 11: SOFTWARE ARCHITECTURE
     # ----------------------------------------------------
-    add_h1("11. Tiered Software Architecture Specification")
+    add_h1("11. Tiered Software Architecture")
     
     doc.add_paragraph(
-        "VoxFlow follows a 5-tier software architecture model that isolates hardware interfacing, network ingestion, signal processing, data storage, and presentation."
+        "Our host system uses a 5-tier architecture:"
     )
-    add_diagram_image("architecture.png", "5-Tiered Software Architecture Diagram for VoxFlow")
+    add_diagram_image("architecture.png", "5-Tiered Software Architecture Diagram")
 
     doc.add_paragraph("Tier Breakdown:")
-    doc.add_paragraph("• Edge Hardware Layer: ESP32, INMP441 microphone, OLED display, and status LEDs.")
-    doc.add_paragraph("• API Ingestion Layer: Flask REST WSGI server, request parsing, and input validation routines.")
-    doc.add_paragraph("• Audio & AI Processing Core: Spectral noise filter, speaker verification module, MFCC extractor, and CNN-LSTM inference engine.")
-    doc.add_paragraph("• Persistence Layer: SQLite local database, file system buffer manager, and cloud sync daemon.")
-    doc.add_paragraph("• Presentation Layer: Declarative Streamlit dashboard, Plotly chart engine, and PDF report exporter.")
+    doc.add_paragraph("• Edge Hardware Tier: ESP32, INMP441 microphone, OLED, LEDs.")
+    doc.add_paragraph("• API Ingestion Tier: Flask REST WSGI server.")
+    doc.add_paragraph("• Audio & AI Processing Tier: Denoising filter, speaker verifier, MFCC extractor, CNN-LSTM model.")
+    doc.add_paragraph("• Persistence Tier: SQLite local database and file buffer.")
+    doc.add_paragraph("• Presentation Tier: Streamlit web dashboard and CSV exporter.")
 
     # ----------------------------------------------------
     # SECTION 12: UML DIAGRAMS
     # ----------------------------------------------------
-    add_h1("12. Formal Object-Oriented UML Diagrams")
+    add_h1("12. Object-Oriented UML Diagrams")
     
     doc.add_paragraph(
-        "To provide a complete object-oriented software engineering specification, formal UML diagrams were constructed. "
-        "Each diagram is presented below as both a high-resolution visual figure and copy-pasteable PlantUML / Mermaid source code."
+        "Below are formal UML diagrams showing our class structures, sequence calls, activity paths, and communication flows."
     )
 
     add_h2("12.1 UML Class Diagram")
-    doc.add_paragraph("Illustrates host domain classes, operational methods, attributes, and relationships.")
-    add_diagram_image("class_diagram.png", "UML Class Diagram for VoxFlow Host Software Architecture")
+    doc.add_paragraph("Shows host software classes, methods, and associations.")
+    add_diagram_image("class_diagram.png", "UML Class Diagram")
 
     add_code_block(
         "@startuml\n"
@@ -674,8 +668,8 @@ def create_report():
     )
 
     add_h2("12.2 UML Sequence Diagram")
-    doc.add_paragraph("Triggers, lifelines, and message interactions across execution boundaries.")
-    add_diagram_image("sequence_diagram.png", "UML Sequence Diagram for ESP32-Flask Ingestion & Prediction Loop")
+    doc.add_paragraph("Shows message flow between ESP32, Flask server, processing modules, SQLite DB, and Streamlit UI.")
+    add_diagram_image("sequence_diagram.png", "UML Sequence Diagram")
 
     add_code_block(
         "sequenceDiagram\n"
@@ -698,16 +692,20 @@ def create_report():
     )
 
     add_h2("12.3 UML Activity Diagram")
-    doc.add_paragraph("Decision paths for noise filtering, speaker verification match, and disfluency prediction.")
-    add_diagram_image("activity_diagram.png", "UML Activity Diagram for Audio Ingestion and Decision Workflows")
+    doc.add_paragraph("Shows decision steps for noise filtering, speaker verification, and disfluency prediction.")
+    add_diagram_image("activity_diagram.png", "UML Activity Diagram")
 
     add_h2("12.4 UML Communication Diagram")
-    doc.add_paragraph("Object interaction networks and numbered message paths across software components.")
-    add_diagram_image("communication_diagram.png", "UML Communication Diagram for VoxFlow Host Subsystems")
+    doc.add_paragraph("Shows object relationships and numbered message calls during audio processing.")
+    add_diagram_image("communication_diagram.png", "UML Communication Diagram")
 
-    # Save Document
-    doc.save(output_docx)
-    print(f"Document successfully created and saved to: {output_docx}")
+    # Save Document safely with permission fallback
+    try:
+        doc.save(output_docx)
+        print(f"Document successfully saved to main path: {output_docx}")
+    except PermissionError:
+        doc.save(output_fallback)
+        print(f"Main file was locked by Word. Saved humanized report to fallback path: {output_fallback}")
 
 if __name__ == "__main__":
     create_report()
