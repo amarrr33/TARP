@@ -27,10 +27,10 @@ def train_model(epochs=15, batch_size=32, lr=0.001, save_dir=r"c:\Users\amare\Do
     print(f"Testing Set (30%)    : {split_info['test_samples']} samples ({split_info['test_ratio']}%)")
     print(f"Target Disfluency Classes: {LABELS}")
     
-    # 2. Instantiate Model
+    # 2. Instantiate Model with Anti-Overfitting Loss & Weight Decay
     model = StutterTransferClassifier(num_classes=len(LABELS)).to(device)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)  # Prevents overconfident memorization
+    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=1e-3) # L2 Regularization
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
     
     history = {

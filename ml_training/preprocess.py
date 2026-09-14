@@ -70,26 +70,46 @@ def create_mel_filterbank(sr=16000, n_fft=512, n_mels=64):
 
 _MEL_FILTERBANK = create_mel_filterbank(sr=SAMPLE_RATE, n_fft=512, n_mels=N_MELS)
 
+def apply_spec_augment(spec: np.ndarray, f_max: int = 8, t_max: int = 10) -> np.ndarray:
+    """
+    Applies SpecAugment (Frequency and Time Masking) to Log-Mel Spectrogram.
+    Prevents model overfitting by forcing network to learn robust temporal disfluency features.
+    """
+    spec_aug = spec.copy()
+    num_mels, num_steps = spec_aug.shape
+    
+    # Frequency masking
+    f = np.random.randint(0, f_max + 1)
+    f0 = np.random.randint(0, max(1, num_mels - f))
+    spec_aug[f0:f0+f, :] = 0.0
+    
+    # Time masking
+    t = np.random.randint(0, t_max + 1)
+    t0 = np.random.randint(0, max(1, num_steps - t))
+    spec_aug[:, t0:t0+t] = 0.0
+    
+    return spec_aug
+
 def extract_log_mel_spectrogram(audio: np.ndarray, augment: bool = False) -> np.ndarray:
     """
     Extract Log-Mel Spectrogram (64 mels x 64 time frames) from audio waveform.
-    Supports audio data augmentation (pitch/speed variation) for Indian student accents.
+    Supports SpecAugment and Telugu-English accent intonation/cadence data augmentation.
     """
     audio = pad_or_crop(audio, TARGET_SAMPLES)
     
-    # Indian Accent Data Augmentation (during training phase)
+    # Telugu-English Accent & Cadence Data Augmentation (during training phase)
     if augment:
-        # Speed stretch simulation via resampling
-        speed_factor = np.random.uniform(0.88, 1.12)
+        # Syllable-timed speed stretch simulation (0.85x to 1.15x)
+        speed_factor = np.random.uniform(0.85, 1.15)
         if speed_factor != 1.0:
             indices = np.round(np.arange(0, len(audio), speed_factor)).astype(int)
             indices = indices[indices < len(audio)]
             audio = audio[indices]
             audio = pad_or_crop(audio, TARGET_SAMPLES)
             
-        # Micro pitch tremor / noise injection
-        if np.random.rand() > 0.5:
-            noise = np.random.normal(0, 0.005, size=audio.shape)
+        # Micro pitch tremor & room acoustic noise injection
+        if np.random.rand() > 0.4:
+            noise = np.random.normal(0, np.random.uniform(0.003, 0.012), size=audio.shape)
             audio = audio + noise
 
     # Compute STFT
@@ -118,6 +138,10 @@ def extract_log_mel_spectrogram(audio: np.ndarray, augment: bool = False) -> np.
     std = np.std(log_mel) + 1e-6
     normalized_spec = (log_mel - mean) / std
     
+    # Apply SpecAugment masking during training
+    if augment:
+        normalized_spec = apply_spec_augment(normalized_spec, f_max=8, t_max=10)
+        
     return normalized_spec.astype(np.float32)
 
 def audio_bytes_to_tensor(audio_bytes: bytes, augment: bool = False) -> torch.Tensor:
@@ -126,3 +150,4 @@ def audio_bytes_to_tensor(audio_bytes: bytes, augment: bool = False) -> torch.Te
     spec = extract_log_mel_spectrogram(audio, augment=augment)
     tensor = torch.tensor(spec, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 64, 64)
     return tensor
+

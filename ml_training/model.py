@@ -35,12 +35,12 @@ class StutterTransferClassifier(nn.Module):
         
         self.global_pool = nn.AdaptiveAvgPool2d((1, 1))
         
-        # Classification Head (Transfer Learning Fine-Tuning Head)
+        # Classification Head (Transfer Learning Fine-Tuning Head with Anti-Overfitting Dropout)
         self.classifier = nn.Sequential(
             nn.Linear(256, 128),
             nn.BatchNorm1d(128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.3),
+            nn.Dropout(0.45),  # Anti-overfitting regularization rate
             nn.Linear(128, num_classes)
         )
         

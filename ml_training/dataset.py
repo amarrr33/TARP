@@ -13,55 +13,56 @@ IDX_TO_LABEL = {i: label for i, label in enumerate(LABELS)}
 
 def generate_synthetic_sep28k_clip(label: str, sr: int = 16000, duration: float = 2.0) -> np.ndarray:
     """
-    Generate synthetic 2-second audio waveform representing authentic SEP-28k/UCLASS speech disfluency physics:
-    - Fluent: Smooth multi-harmonic speech formant contours with natural pitch cadence.
-    - Repetition: Rapid repeating vocal bursts (e.g. 4-6 Hz syllable stutter spikes).
+    Generate synthetic 2-second audio waveform representing authentic speech disfluency physics with 
+    Telugu-English and South Indian English accent cadence & filler word acoustics:
+    - Fluent: Syllable-timed pitch cadence with common fillers ('bro', 'ra', 'antee', 'means', 'like').
+    - Repetition: Rapid repeating vocal bursts (e.g. 4-7 Hz syllable stutter spikes on consonants).
     - Prolongation: High-power sustained single-formant frequency resonance (sound stretch).
     - Block: Extended tense silence (zero amplitude) followed by sudden high-energy release burst.
     """
     t = np.linspace(0, duration, int(sr * duration), endpoint=False)
-    base_f0 = np.random.uniform(120.0, 240.0)  # Voice fundamental pitch range (male/female Indian voices)
+    # Telugu/South Indian voice pitch cadence range
+    base_f0 = np.random.uniform(130.0, 250.0)
     
-    # Base vocal tract harmonics
-    vocal = 0.5 * np.sin(2 * np.pi * base_f0 * t) + \
-            0.3 * np.sin(2 * np.pi * 2 * base_f0 * t) + \
-            0.15 * np.sin(2 * np.pi * 3 * base_f0 * t)
+    # Base vocal tract harmonics with subtle Telugu-English intonation curve (rising pitch at phrase ends)
+    pitch_contour = base_f0 * (1.0 + 0.15 * np.sin(2 * np.pi * 0.8 * t))
+    vocal = 0.5 * np.sin(2 * np.pi * pitch_contour * t) + \
+            0.3 * np.sin(2 * np.pi * 2 * pitch_contour * t) + \
+            0.15 * np.sin(2 * np.pi * 3 * pitch_contour * t)
     
-    # Enveloping according to disfluency type with realistic room acoustic noise & spectral overlap
-    noise_level = np.random.uniform(0.04, 0.09)  # Realistic ambient room/mic noise
+    noise_level = np.random.uniform(0.04, 0.09)  # Ambient room noise
     
     if label == "Fluent":
-        # Smooth speech envelope with minor natural intensity modulation
-        env = 0.5 + 0.4 * np.sin(2 * np.pi * 2.5 * t)
+        # Syllable-timed speech envelope with natural Telugu filler pauses ('antee...', 'means...')
+        env = 0.5 + 0.4 * np.sin(2 * np.pi * 3.2 * t)
         signal = vocal * env + np.random.normal(0, noise_level, size=t.shape)
-        # 10% chance of natural micro pause mimicking block overlap
-        if np.random.rand() < 0.10:
-            signal[int(sr*0.6):int(sr*0.8)] *= 0.1
+        # 15% chance of fluent South Indian filler word drawl ('like...', 'bro...') which is NOT a stutter
+        if np.random.rand() < 0.15:
+            filler_mask = (t > 0.8) & (t < 1.3)
+            signal[filler_mask] = 0.4 * np.sin(2 * np.pi * (base_f0 * 1.1) * t[filler_mask]) + np.random.normal(0, noise_level, size=np.sum(filler_mask))
         
     elif label == "Repetition":
-        # Rapid stutter repetition spikes (e.g. 4.5-6.5 Hz syllable stutter spikes)
-        rep_rate = np.random.uniform(4.0, 7.0)
+        # Rapid syllable stutter spikes (e.g. 4.5-7.0 Hz syllable stutter spikes)
+        rep_rate = np.random.uniform(4.5, 7.0)
         pulse_train = (np.sin(2 * np.pi * rep_rate * t) > 0.1).astype(np.float32)
         signal = vocal * pulse_train + np.random.normal(0, noise_level * 1.2, size=t.shape)
-        # 12% overlap with fluent speech rhythm
         if np.random.rand() < 0.12:
-            signal = 0.6 * signal + 0.4 * (vocal * (0.5 + 0.4 * np.sin(2 * np.pi * 2.5 * t)))
+            signal = 0.6 * signal + 0.4 * (vocal * (0.5 + 0.4 * np.sin(2 * np.pi * 3.0 * t)))
         
     elif label == "Prolongation":
-        # Prolonged sound resonance (high amplitude, fixed frequency tone hold)
-        prolog_freq = np.random.uniform(600.0, 2200.0)
-        prolongation_tone = 0.6 * np.sin(2 * np.pi * prolog_freq * t)
-        signal = 0.4 * vocal + 0.6 * prolongation_tone + np.random.normal(0, noise_level, size=t.shape)
-        # 10% overlap with repetition pulse
+        # Pathological sound prolongation (sustained high-power resonance tone hold > 1.0s)
+        prolog_freq = np.random.uniform(700.0, 2400.0)
+        prolongation_tone = 0.75 * np.sin(2 * np.pi * prolog_freq * t)
+        signal = 0.3 * vocal + 0.7 * prolongation_tone + np.random.normal(0, noise_level, size=t.shape)
         if np.random.rand() < 0.10:
             signal *= (np.sin(2 * np.pi * 5.0 * t) > 0.0).astype(np.float32)
         
     elif label == "Block":
-        # Silent block for first 0.8-1.4 seconds, followed by high-energy release burst
+        # Involuntary silent muscle block for 0.8-1.4 seconds, followed by explosive release burst
         block_duration = np.random.uniform(0.7, 1.3)
-        env = np.where(t < block_duration, 0.02, 1.0)
+        env = np.where(t < block_duration, 0.015, 1.0)
         burst = np.where((t >= block_duration) & (t < block_duration + 0.15), 
-                         np.random.normal(0, 0.5, size=t.shape), 0.0)
+                         np.random.normal(0, 0.55, size=t.shape), 0.0)
         signal = (vocal * env) + burst + np.random.normal(0, noise_level * 0.8, size=t.shape)
     else:
         signal = vocal

@@ -27,26 +27,28 @@ def health_check():
 @app.route('/api/v1/audio/upload', methods=['POST'])
 def handle_audio_upload():
     user_id = int(request.form.get('user_id', 1))
+    audio_bytes = None
     
-    if 'audio' not in request.files:
-        # Check if raw binary body or mock call
-        if request.data:
-            filename = f"audio_{int(time.time())}_{uuid.uuid4().hex[:6]}.wav"
-            filepath = os.path.join(UPLOAD_DIR, filename)
-            with open(filepath, 'wb') as f:
-                f.write(request.data)
-        else:
-            return jsonify({'status': 'error', 'message': 'Missing audio file in upload payload'}), 400
-    else:
+    if 'audio' in request.files:
         file = request.files['audio']
-        if file.filename == '':
-            return jsonify({'status': 'error', 'message': 'Empty audio filename'}), 400
-        filename = f"audio_{int(time.time())}_{uuid.uuid4().hex[:6]}.wav"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        file.save(filepath)
+        if file.filename != '':
+            audio_bytes = file.read()
+    elif request.data:
+        audio_bytes = request.data
 
-    # Trigger software processing pipeline
-    result = pipeline_runner.process(filepath, user_id=user_id)
+    if not audio_bytes:
+        return jsonify({'status': 'error', 'message': 'Missing audio file in upload payload'}), 400
+
+    filename = f"audio_{int(time.time())}_{uuid.uuid4().hex[:6]}.wav"
+    filepath = os.path.join(UPLOAD_DIR, filename)
+    try:
+        with open(filepath, 'wb') as f:
+            f.write(audio_bytes)
+    except Exception:
+        pass
+
+    # Trigger software audio chunk accumulator & processing pipeline
+    result = pipeline_runner.process_chunk(audio_bytes, user_id=user_id, session_id=f"user_{user_id}")
     
     if result.get("status") == "rejected":
         return jsonify({
@@ -55,17 +57,20 @@ def handle_audio_upload():
             'display_message': 'Speaker Mismatch'
         }), 403
 
-    # Save to SQLite Database
-    pred_id = db.save_prediction(
-        user_id=user_id,
-        fluency_score=result['fluency_score'],
-        stutter_type=result['stutter_type'],
-        confidence=result['confidence'],
-        audio_path=filepath
-    )
+    # Save completed prediction to SQLite Database if analyzed
+    pred_id = None
+    if result.get("status") == "analyzed":
+        pred_id = db.save_prediction(
+            user_id=user_id,
+            fluency_score=result['fluency_score'],
+            stutter_type=result['stutter_type'],
+            confidence=result['confidence'],
+            audio_path=filepath
+        )
 
     response_data = {
         'status': 'success',
+        'pipeline_status': result.get('status', 'analyzed'),
         'prediction_id': pred_id,
         'timestamp': datetime.now().isoformat(),
         'user_id': user_id,
@@ -73,7 +78,8 @@ def handle_audio_upload():
         'stutter_detected': result['is_disfluent'],
         'stutter_type': result['stutter_type'],
         'confidence': result['confidence'],
-        'display_message': f"Fluency: {result['fluency_score']:.1f}% ({result['stutter_type']})"
+        'buffer_sec': result.get('buffer_sec', 2.5),
+        'display_message': result.get('display_message', f"Fluency: {result['fluency_score']:.1f}% ({result['stutter_type']})")
     }
     return jsonify(response_data), 200
 
