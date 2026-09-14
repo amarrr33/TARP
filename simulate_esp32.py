@@ -79,5 +79,33 @@ def simulate_esp32_post(num_chunks=6):
             
         time.sleep(0.4) # Simulate 400ms Wi-Fi upload delay between 0.5s hardware sampling cycles
 
+def test_realtime_training():
+    print(f"\n========================================================")
+    print(f" [ONLINE LEARNING ENGINE] Triggering Real-Time Retraining")
+    print(f" Target Host REST API: http://localhost:5000/api/v1/model/retrain")
+    print(f"========================================================\n")
+    try:
+        # 1. Fetch current status
+        status_res = requests.get("http://localhost:5000/api/v1/model/status", timeout=5)
+        if status_res.status_code == 200:
+            st = status_res.json()
+            print(f"-> Current Model Version: {st.get('version')} | Benchmark Accuracy: {st.get('benchmark_accuracy')}")
+            
+        # 2. Trigger real-time retraining
+        print("-> Posting real-time online fine-tuning request (3 epochs)...")
+        retrain_res = requests.post("http://localhost:5000/api/v1/model/retrain", json={"epochs": 3}, timeout=15)
+        
+        if retrain_res.status_code == 200:
+            res = retrain_res.json()
+            print(f"-> RETRAINING SUCCESS: {res.get('message')}")
+            print(f"-> New Model Version : {res.get('new_version')}")
+            print(f"-> Fine-Tune Accuracy: {res.get('fine_tune_accuracy')} | Loss: {res.get('final_loss')}")
+        else:
+            print(f"-> Retraining failed: {retrain_res.text}")
+            
+    except Exception as e:
+        print(f"[RETRAINING TEST ERROR] Server connection failed: {e}\n")
+
 if __name__ == "__main__":
     simulate_esp32_post()
+    test_realtime_training()

@@ -101,19 +101,25 @@ class FeatureExtractor:
 class FluencyPredictor:
     def __init__(self, weights_path=MODEL_WEIGHTS_PATH):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = StutterTransferClassifier(num_classes=len(LABELS)).to(self.device)
+        self.weights_path = weights_path
         self.labels = LABELS
-        
-        if os.path.exists(weights_path):
+        self.version = 1.0
+        self.reload_weights()
+
+    def reload_weights(self):
+        """Hot-reloads PyTorch model weights on the fly after real-time online training steps."""
+        self.model = StutterTransferClassifier(num_classes=len(self.labels)).to(self.device)
+        if os.path.exists(self.weights_path):
             try:
-                checkpoint = torch.load(weights_path, map_location=self.device)
+                checkpoint = torch.load(self.weights_path, map_location=self.device)
                 self.model.load_state_dict(checkpoint['model_state_dict'])
+                self.version = checkpoint.get('version', 1.0)
                 self.model.eval()
-                print(f"[FluencyPredictor] Loaded trained PyTorch model from {weights_path}")
+                print(f"[FluencyPredictor] Successfully loaded/reloaded PyTorch model (v{self.version}) from {self.weights_path}")
             except Exception as e:
                 print(f"[FluencyPredictor] Warning: Failed to load model weights ({e}). Using initialized weights.")
         else:
-            print(f"[FluencyPredictor] Warning: Weights file {weights_path} not found. Using initialized weights.")
+            print(f"[FluencyPredictor] Warning: Weights file {self.weights_path} not found. Using initialized weights.")
 
     def predict(self, input_tensor):
         self.model.eval()
