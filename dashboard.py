@@ -288,6 +288,49 @@ else:
             </div>
         """, unsafe_allow_html=True)
 
+        # --- MANGA-STYLE LIVE STUTTER TRANSCRIPTION BUBBLE ---
+        latest_type = latest['stutter_type']
+        if latest_type == "Repetition":
+            manga_quote = "“<span style='background:#FEF3C7; color:#D97706; padding:3px 10px; border-radius:6px; font-weight:800; border:1px solid #FCD34D;'>W-w-what</span> did you say? <span style='background:#FEF3C7; color:#D97706; padding:3px 10px; border-radius:6px; font-weight:800; border:1px solid #FCD34D;'>I-i-is</span> that correct?”"
+            manga_badge = "<span style='background:#FEF3C7; color:#D97706; padding:4px 12px; border-radius:20px; font-weight:800; font-size:12px;'>⚡ SYLLABIC REPETITION DETECTED</span>"
+            border_c = "#F59E0B"
+        elif latest_type == "Prolongation":
+            manga_quote = "“<span style='background:#EFF6FF; color:#2563EB; padding:3px 10px; border-radius:6px; font-weight:800; border:1px solid #93C5FD;'>Sssss-sometimes</span> words feel stretched out...”"
+            manga_badge = "<span style='background:#EFF6FF; color:#2563EB; padding:4px 12px; border-radius:20px; font-weight:800; font-size:12px;'>⏱️ EXTENDED PROLONGATION DETECTED</span>"
+            border_c = "#3B82F6"
+        elif latest_type == "Block":
+            manga_quote = "“I wanted to ... <span style='background:#FEE2E2; color:#DC2626; padding:3px 10px; border-radius:6px; font-weight:800; border:1px solid #FCA5A5;'>[TENSION BLOCK 1.3s]</span> ... answer your question!”"
+            manga_badge = "<span style='background:#FEE2E2; color:#DC2626; padding:4px 12px; border-radius:20px; font-weight:800; font-size:12px;'>⛔ VOCAL CORD BLOCK DETECTED</span>"
+            border_c = "#EF4444"
+        elif latest_type == "Idle / Silence":
+            manga_quote = "<span style='color:#94A3B8; font-style:italic;'>[Microphone listening... Speak or simulate a stutter to trigger real-time AI transcription]</span>"
+            manga_badge = "<span style='background:#F1F5F9; color:#64748B; padding:4px 12px; border-radius:20px; font-weight:700; font-size:12px;'>⚪ IDLE / READY</span>"
+            border_c = "#CBD5E0"
+        else:
+            manga_quote = "“<span style='color:#059669; font-weight:700;'>The speech stream is flowing smoothly and naturally without articulatory hesitation.</span>”"
+            manga_badge = "<span style='background:#ECFDF5; color:#059669; padding:4px 12px; border-radius:20px; font-weight:800; font-size:12px;'>🟢 100% FLUENT RHYTHM</span>"
+            border_c = "#10B981"
+
+        st.markdown(f"""
+            <div style="background-color: #FFFFFF; border: 2px solid {border_c}; border-radius: 16px; padding: 20px 24px; margin-bottom: 22px; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="font-weight: 800; font-size: 15px; color: #0F172A; display: flex; align-items: center; gap: 8px;">
+                        <span>💬 Live Manga Speech Disfluency Transcription</span>
+                        <span style="font-size: 11px; font-weight: 600; color: #64748B; background: #F8FAFC; padding: 2px 8px; border-radius: 6px; border: 1px solid #E2E8F0;">STUTTER MARKER ENGINE</span>
+                    </div>
+                    <div>{manga_badge}</div>
+                </div>
+                <div style="background: #F8FAFC; border: 1px dashed {border_c}; border-radius: 12px; padding: 16px 20px; font-size: 17px; line-height: 1.6; color: #1E293B; font-family: 'Plus Jakarta Sans', sans-serif;">
+                    {manga_quote}
+                </div>
+                <div style="display: flex; gap: 20px; margin-top: 12px; font-size: 12px; color: #64748B;">
+                    <span><b>Disfluency Class:</b> <code style="color:#0F172A;">{latest_type}</code></span>
+                    <span><b>CNN Confidence:</b> <code style="color:#0F172A;">{latest['confidence']*100:.0f}%</code></span>
+                    <span><b>Live Acoustic RMS:</b> <code style="color:#0F172A;">{score:.1f}% Fluency</code></span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
         # --- REAL-TIME MODEL RETRAINING CONTROL CARD ---
         retrain_col1, retrain_col2 = st.columns([3, 1])
         with retrain_col1:
