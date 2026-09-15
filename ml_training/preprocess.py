@@ -14,17 +14,15 @@ def pcm_to_float(audio_bytes: bytes) -> np.ndarray:
     if not audio_bytes:
         return np.zeros(TARGET_SAMPLES, dtype=np.float32)
     
-    # Check if 32-bit int from ESP32 or 16-bit int standard WAV
-    if len(audio_bytes) % 4 == 0 and len(audio_bytes) >= TARGET_SAMPLES * 2:
-        try:
-            arr = np.frombuffer(audio_bytes, dtype=np.int32).astype(np.float32)
-            arr = arr / (2.0 ** 31)
-        except Exception:
-            arr = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-    elif len(audio_bytes) % 2 == 0:
+    # Automatically strip RIFF WAV header if present (standard 44 bytes from ESP8266)
+    if audio_bytes[:4] == b'RIFF' and len(audio_bytes) >= 44:
+        audio_bytes = audio_bytes[44:]
+
+    # Decode 16-bit PCM (standard for ESP8266 audio stream)
+    if len(audio_bytes) % 2 == 0:
         arr = np.frombuffer(audio_bytes, dtype=np.int16).astype(np.float32) / 32768.0
     else:
-        arr = np.frombuffer(audio_bytes, dtype=np.uint8).astype(np.float32) / 128.0 - 1.0
+        arr = np.frombuffer(audio_bytes[:-1], dtype=np.int16).astype(np.float32) / 32768.0
         
     return arr
 

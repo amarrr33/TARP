@@ -176,10 +176,24 @@ class PipelineRunner:
                 "display_message": f"Buffering... ({acc_info['accumulated_sec']}s / {acc_info['target_sec']}s)"
             }
             
-        # Step 2: Extract Log-Mel Spectrogram from accumulated audio window
+        # Step 2: Voice Activity Check (Idle / Silence Detection)
+        if not acc_info["is_speech"]:
+            return {
+                "status": "idle",
+                "buffer_sec": acc_info["accumulated_sec"],
+                "target_sec": acc_info["target_sec"],
+                "fluency_score": 100.0,
+                "is_disfluent": False,
+                "stutter_type": "Idle / Silence",
+                "confidence": 0.99,
+                "rms_energy": acc_info["rms_energy"],
+                "display_message": "Idle: Listening..."
+            }
+
+        # Step 3: Extract Log-Mel Spectrogram from accumulated audio window
         tensor_input = self.extractor.extract_mfccs(acc_info["audio_array"])
         
-        # Step 3: Run PyTorch CNN Inference
+        # Step 4: Run PyTorch CNN Inference
         prediction = self.predictor.predict(tensor_input)
         prediction["status"] = "analyzed"
         prediction["buffer_sec"] = acc_info["accumulated_sec"]

@@ -32,83 +32,119 @@ def generate_sample_wav(filename=WAV_PATH, duration_sec=3.0, sample_rate=16000):
     print(f"Generated simulated audio WAV file: {filename}")
     return filename
 
-def generate_chunk_wav_bytes(duration_sec=0.5, sample_rate=16000, chunk_num=1):
-    """Generates a 0.5-second 16kHz 16-bit Mono PCM audio chunk simulating ESP32 INMP441 micro-uploads."""
+def generate_chunk_audio(mode="fluent", chunk_num=1, duration_sec=0.5, sample_rate=16000):
+    """
+    Generates realistic 0.5s audio chunks representing real ESP32 INMP441 microphone inputs:
+    - 'idle': Low-amplitude room ambient noise (energy < 0.003 RMS, silence/no speech).
+    - 'fluent': Harmonic vocal cords with smooth cadence and mild natural variation.
+    - 'repetition': Fast repeating syllables ('p-p-paper', 'b-b-bro').
+    - 'prolongation': Stretched tense high-frequency formant ('ssss-snake', 'anteeee').
+    """
     num_samples = int(duration_sec * sample_rate)
     samples = []
-    f0 = 220.0 + (chunk_num * 30.0) # Dynamic pitch variation across chunks
-    for i in range(num_samples):
-        t = float(i) / sample_rate
-        sine_val = math.sin(2.0 * math.pi * f0 * t)
-        noise_val = random.uniform(-0.08, 0.08)
-        sample_val = int((sine_val * 0.5 + noise_val) * 32767.0)
-        sample_val = max(-32768, min(32767, sample_val))
-        samples.append(struct.pack('<h', sample_val))
-    return b''.join(samples)
-
-def simulate_esp32_post(num_chunks=6):
-    print(f"\n========================================================")
-    print(f" [ESP32 HARDWARE SIMULATOR] Streaming {num_chunks} x 0.5s Audio Chunks")
-    print(f" Target Host REST API: {SERVER_URL}")
-    print(f"========================================================\n")
+    t = np.linspace(0, duration_sec, num_samples, endpoint=False)
     
-    for i in range(1, num_chunks + 1):
-        chunk_bytes = generate_chunk_wav_bytes(duration_sec=0.5, chunk_num=i)
-        print(f"[Chunk {i}/{num_chunks}] ESP32 sending 0.5s audio chunk ({len(chunk_bytes)} bytes) over Wi-Fi...")
+    if mode == "idle":
+        # Pure ambient microphone background noise (very low amplitude)
+        signal = np.random.normal(0, 0.002, size=num_samples)
+    elif mode == "fluent":
+        # Clean speech harmonics (140Hz base + 280Hz + 420Hz formants)
+        f0 = 150.0 + 10.0 * np.sin(2 * np.pi * 1.5 * t)
+        vocal = 0.5 * np.sin(2 * np.pi * f0 * t) + 0.3 * np.sin(2 * np.pi * 2 * f0 * t)
+        env = 0.5 + 0.4 * np.sin(2 * np.pi * 2.5 * t)
+        signal = vocal * env + np.random.normal(0, 0.015, size=num_samples)
+    elif mode == "repetition":
+        # Rapid syllable repetitions (burst pulses at 5.5 Hz)
+        f0 = 180.0
+        vocal = 0.6 * np.sin(2 * np.pi * f0 * t)
+        pulse = (np.sin(2 * np.pi * 5.5 * t) > 0.1).astype(np.float32)
+        signal = vocal * pulse + np.random.normal(0, 0.03, size=num_samples)
+    elif mode == "prolongation":
+        # Prolonged sound (sustained 1100Hz formant)
+        f0 = 160.0
+        prolong_tone = 0.65 * np.sin(2 * np.pi * 1100.0 * t)
+        signal = 0.35 * np.sin(2 * np.pi * f0 * t) + prolong_tone + np.random.normal(0, 0.02, size=num_samples)
+    else:
+        signal = np.random.normal(0, 0.002, size=num_samples)
         
-        try:
-            files = {'audio': (f'chunk_{i}.wav', chunk_bytes, 'audio/wav')}
-            data = {'user_id': '1', 'chunk_num': str(i)}
-            response = requests.post(SERVER_URL, files=files, data=data, timeout=5)
-            
-            if response.status_code == 200:
-                res = response.json()
-                pipe_status = res.get('pipeline_status')
-                score = res.get('fluency_score')
-                stutter = res.get('stutter_detected')
-                stutter_type = res.get('stutter_type')
-                buf_sec = res.get('buffer_sec')
-                
-                print(f"   -> [Server Response] Pipeline Status: {pipe_status.upper()} | Rolling Buffer: {buf_sec}s")
-                print(f"   -> [OLED Display] '{res.get('display_message')}'")
-                print(f"   -> [ESP32 LED Indicator] {'RED (Disfluency Alert)' if stutter else 'GREEN (Fluent)'}\n")
-            else:
-                print(f"   -> [Error Response] HTTP {response.status_code}: {response.text}\n")
-                
-        except Exception as e:
-            print(f"[ESP32 SIMULATOR ERROR] Connection failed: {e}")
-            print("Make sure Flask server is running on http://localhost:5000 (`python server.py`)\n")
-            break
-            
-        time.sleep(0.4) # Simulate 400ms Wi-Fi upload delay between 0.5s hardware sampling cycles
+    signal = np.clip(signal, -1.0, 1.0)
+    int_samples = (signal * 32767.0).astype(np.int16)
+    return int_samples.tobytes()
 
-def test_realtime_training():
-    print(f"\n========================================================")
-    print(f" [ONLINE LEARNING ENGINE] Triggering Real-Time Retraining")
-    print(f" Target Host REST API: http://localhost:5000/api/v1/model/retrain")
-    print(f"========================================================\n")
+import numpy as np
+
+def run_live_scenario_demo():
+    print("=" * 68)
+    print("      🎙️ VOXFLOW LIVE HARDWARE & SPEECH CLASSIFICATION DEMO")
+    print("  Demonstrates: Idle (Silence) -> Fluent Speech -> Stutter -> Recovery")
+    print("  Host Server Target: " + SERVER_URL)
+    print("=" * 68)
+    
+    # Check if server is running
     try:
-        # 1. Fetch current status
-        status_res = requests.get("http://localhost:5000/api/v1/model/status", timeout=5)
-        if status_res.status_code == 200:
-            st = status_res.json()
-            print(f"-> Current Model Version: {st.get('version')} | Benchmark Accuracy: {st.get('benchmark_accuracy')}")
-            
-        # 2. Trigger real-time retraining
-        print("-> Posting real-time online fine-tuning request (3 epochs)...")
-        retrain_res = requests.post("http://localhost:5000/api/v1/model/retrain", json={"epochs": 3}, timeout=15)
+        health = requests.get("http://localhost:5000/api/v1/health", timeout=3)
+        if health.status_code != 200:
+            print("[ERROR] Server returned non-200. Make sure `python server.py` is running!")
+            return
+    except Exception:
+        print("\n[ERROR] Flask server is NOT running on port 5000!")
+        print("-> Please run `python server.py` in another terminal or launch `run_voxflow_system.bat`!\n")
+        return
+
+    scenario = [
+        # Phase 1: 4 chunks (2.0s) of Idle / Silence
+        ("idle", "Phase 1: IDLE / SILENCE (No one speaking, ambient room noise only)", 4),
+        # Phase 2: 6 chunks (3.0s) of Smooth Fluent Speech
+        ("fluent", "Phase 2: FLUENT SPEECH (Speaker talking smoothly: 'Hello, I am practicing today')", 6),
+        # Phase 3: 6 chunks (3.0s) of Disfluency (Stuttering)
+        ("repetition", "Phase 3: DISFLUENCY DETECTED (Speaker repeats syllables: 'p-p-paper, wh-wh-what')", 4),
+        ("prolongation", "Phase 3 (cont): PROLONGATION (Speaker elongates vowel: 'ssss-sometimes')", 3),
+        # Phase 4: 4 chunks (2.0s) of Recovery to Fluent
+        ("fluent", "Phase 4: RECOVERY TO FLUENT (Speaker resumes fluent speech)", 5),
+    ]
+
+    total_chunk = 1
+    for mode, phase_desc, num_chunks in scenario:
+        print(f"\n>>> {phase_desc}")
+        print("-" * 68)
         
-        if retrain_res.status_code == 200:
-            res = retrain_res.json()
-            print(f"-> RETRAINING SUCCESS: {res.get('message')}")
-            print(f"-> New Model Version : {res.get('new_version')}")
-            print(f"-> Fine-Tune Accuracy: {res.get('fine_tune_accuracy')} | Loss: {res.get('final_loss')}")
-        else:
-            print(f"-> Retraining failed: {retrain_res.text}")
+        for i in range(1, num_chunks + 1):
+            chunk_bytes = generate_chunk_audio(mode=mode, chunk_num=i)
             
-    except Exception as e:
-        print(f"[RETRAINING TEST ERROR] Server connection failed: {e}\n")
+            try:
+                files = {'audio': (f'chunk_{total_chunk}.wav', chunk_bytes, 'audio/wav')}
+                data = {'user_id': '1', 'chunk_num': str(total_chunk)}
+                resp = requests.post(SERVER_URL, files=files, data=data, timeout=5)
+                
+                if resp.status_code == 200:
+                    r = resp.json()
+                    status = r.get('pipeline_status', '').upper()
+                    stutter_type = r.get('stutter_type')
+                    score = r.get('fluency_score')
+                    is_stutter = r.get('stutter_detected')
+                    buf = r.get('buffer_sec', 0.0)
+                    
+                    if is_stutter:
+                        led_str = "🔴 RED LED (DISFLUENCY ALERT!)"
+                    elif status == "IDLE":
+                        led_str = "🟢 GREEN LED (Idle / Listening)"
+                    else:
+                        led_str = "🟢 GREEN LED (Fluent)"
+                        
+                    print(f"[{total_chunk:02d}] State: {mode.upper():<11} | Score: {score:>5.1f}% | Type: {stutter_type:<22} | LED: {led_str}")
+                else:
+                    print(f"[{total_chunk:02d}] Server error {resp.status_code}: {resp.text}")
+            except Exception as e:
+                print(f"[{total_chunk:02d}] Connection failed: {e}")
+                break
+                
+            total_chunk += 1
+            time.sleep(0.5)  # Simulate 0.5s real-time cadence
+            
+    print("\n" + "=" * 68)
+    print("  ✅ LIVE DEMO COMPLETED!")
+    print("  Open Dashboard http://localhost:8501 to see all new sessions and graphs!")
+    print("=" * 68)
 
 if __name__ == "__main__":
-    simulate_esp32_post()
-    test_realtime_training()
+    run_live_scenario_demo()

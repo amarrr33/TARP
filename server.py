@@ -8,7 +8,10 @@ from pipeline import pipeline_runner
 
 from ml_training.online_trainer import online_trainer
 
-# Initialize Database on Server Start
+# Initialize Flask app and Database
+app = Flask(__name__)
+db = DatabaseManager()
+
 init_db()
 seed_sample_data()
 
@@ -104,9 +107,9 @@ def handle_audio_upload():
             'display_message': 'Speaker Mismatch'
         }), 403
 
-    # Save completed prediction to SQLite Database if analyzed
+    # Save completed prediction to SQLite Database if analyzed or idle
     pred_id = None
-    if result.get("status") == "analyzed":
+    if result.get("status") in ["analyzed", "idle"]:
         pred_id = db.save_prediction(
             user_id=user_id,
             fluency_score=result['fluency_score'],
