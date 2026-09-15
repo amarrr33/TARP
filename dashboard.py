@@ -177,6 +177,10 @@ st.sidebar.markdown("#### ⚙️ Clinical Sensitivity")
 stutter_threshold = st.sidebar.slider("Fluency Score Threshold (%)", 50, 95, 78)
 
 st.sidebar.markdown("---")
+st.sidebar.markdown("#### 🔄 Live Stream Updates")
+auto_refresh = st.sidebar.checkbox("Auto-Refresh Dashboard (every 2s)", value=True)
+
+st.sidebar.markdown("---")
 st.sidebar.success("✅ **System Connected**\n- REST Server: `http://localhost:5000`\n- Database: SQLite (ACID Active)\n- ESP32 Wi-Fi Sync: Online")
 
 # --- HEADER BANNER ---
@@ -442,3 +446,9 @@ else:
         # --- FOOTER ---
         st.markdown("<br><hr>", unsafe_allow_html=True)
         st.caption("VoxFlow Software Engineering Architecture v1.0.0 | SQLite Local ACID Storage | Real-Time Hardware Sync")
+
+# Auto-Refresh Page Loop
+if auto_refresh:
+    import time
+    time.sleep(2)
+    st.rerun()
