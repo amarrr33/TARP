@@ -12,9 +12,8 @@ from ml_training.online_trainer import online_trainer
 init_db()
 seed_sample_data()
 
-app = Flask(__name__)
-db = DatabaseManager()
-UPLOAD_DIR = r"c:\Users\amare\Downloads\TARP\audio_buffer"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "audio_buffer")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.route('/api/v1/health', methods=['GET'])

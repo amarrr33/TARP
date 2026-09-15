@@ -3,9 +3,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import sqlite3
-from datetime import datetime, timedelta
+import os
 
-DB_PATH = r"c:\Users\amare\Downloads\TARP\voxflow_local.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "voxflow_local.db")
 
 # Streamlit Page Config
 st.set_page_config(

@@ -3,7 +3,8 @@ import os
 import random
 from datetime import datetime, timedelta
 
-DB_PATH = r"c:\Users\amare\Downloads\TARP\voxflow_local.db"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "voxflow_local.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

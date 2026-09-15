@@ -5,8 +5,11 @@ import math
 import time
 import random
 
+import os
+
 SERVER_URL = "http://localhost:5000/api/v1/audio/upload"
-WAV_PATH = r"c:\Users\amare\Downloads\TARP\simulated_esp32_audio.wav"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WAV_PATH = os.path.join(BASE_DIR, "simulated_esp32_audio.wav")
 
 def generate_sample_wav(filename=WAV_PATH, duration_sec=3.0, sample_rate=16000):
     """Generates a 3-second 16kHz 16-bit Mono WAV audio file simulating ESP32 INMP441 audio input."""

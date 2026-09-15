@@ -7,11 +7,16 @@ import torch.optim as optim
 from .dataset import get_train_test_dataloaders, LABELS
 from .model import StutterTransferClassifier
 
-def train_model(epochs=15, batch_size=32, lr=0.001, save_dir=r"c:\Users\amare\Downloads\TARP\model_weights"):
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_SAVE_DIR = os.path.join(BASE_DIR, "model_weights")
+
+def train_model(epochs=15, batch_size=32, lr=0.001, save_dir=None):
     """
     Executes Transfer Learning fine-tuning on VoxFlow disfluency dataset with 70-30 train-test split.
     Saves trained PyTorch weights to model_weights/stutter_model.pt.
     """
+    if save_dir is None:
+        save_dir = DEFAULT_SAVE_DIR
     os.makedirs(save_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")

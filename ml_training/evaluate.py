@@ -7,12 +7,19 @@ from sklearn.metrics import classification_report, confusion_matrix
 from .dataset import get_train_test_dataloaders, LABELS
 from .model import StutterTransferClassifier
 
-def evaluate_model(weights_path=r"c:\Users\amare\Downloads\TARP\model_weights\stutter_model.pt",
-                   save_dir=r"c:\Users\amare\Downloads\TARP\model_weights"):
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_SAVE_DIR = os.path.join(BASE_DIR, "model_weights")
+DEFAULT_WEIGHTS_PATH = os.path.join(DEFAULT_SAVE_DIR, "stutter_model.pt")
+
+def evaluate_model(weights_path=None, save_dir=None):
     """
     Evaluates trained VoxFlow PyTorch model on the 30% test dataset.
     Generates Confusion Matrix and Training Performance Curves.
     """
+    if save_dir is None:
+        save_dir = DEFAULT_SAVE_DIR
+    if weights_path is None:
+        weights_path = DEFAULT_WEIGHTS_PATH
     os.makedirs(save_dir, exist_ok=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     

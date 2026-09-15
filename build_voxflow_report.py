@@ -7,9 +7,10 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 # Document path
-output_docx = r"c:\Users\amare\Downloads\TARP\VoxFlow_Software_Engineering_Report.docx"
-output_fallback = r"c:\Users\amare\Downloads\TARP\VoxFlow_Software_Engineering_Report_Human.docx"
-diagrams_dir = r"c:\Users\amare\Downloads\TARP\diagrams"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+output_docx = os.path.join(BASE_DIR, "VoxFlow_Software_Engineering_Report.docx")
+output_fallback = os.path.join(BASE_DIR, "VoxFlow_Software_Engineering_Report_Human.docx")
+diagrams_dir = os.path.join(BASE_DIR, "diagrams")
 
 # Color Palette Constants
 COLOR_NAVY = RGBColor(0x1A, 0x36, 0x5D)

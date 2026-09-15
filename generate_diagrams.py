@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
 
-# Ensure diagrams output directory exists
-output_dir = r"c:\Users\amare\Downloads\TARP\diagrams"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+output_dir = os.path.join(BASE_DIR, "diagrams")
 os.makedirs(output_dir, exist_ok=True)
 
 # Set global style parameters

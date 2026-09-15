@@ -10,7 +10,8 @@ from .dataset import DisfluencyDataset, LABELS, LABEL_TO_IDX
 from .model import StutterTransferClassifier
 from .preprocess import audio_bytes_to_tensor, pcm_to_float
 
-MODEL_WEIGHTS_PATH = r"c:\Users\amare\Downloads\TARP\model_weights\stutter_model.pt"
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_WEIGHTS_PATH = os.path.join(BASE_DIR, "model_weights", "stutter_model.pt")
 
 class OnlineTrainer:
     """
@@ -18,8 +19,8 @@ class OnlineTrainer:
     Executes few-shot online PyTorch fine-tuning on live audio samples and user feedback,
     updating saved model weights on the fly.
     """
-    def __init__(self, weights_path=MODEL_WEIGHTS_PATH):
-        self.weights_path = weights_path
+    def __init__(self, weights_path=None):
+        self.weights_path = weights_path if weights_path else DEFAULT_WEIGHTS_PATH
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.feedback_queue = []
         self.version = 1.0

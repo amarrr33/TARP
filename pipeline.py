@@ -8,7 +8,9 @@ from ml_training.preprocess import audio_bytes_to_tensor, extract_log_mel_spectr
 from ml_training.model import StutterTransferClassifier
 from ml_training.dataset import LABELS
 
-MODEL_WEIGHTS_PATH = r"c:\Users\amare\Downloads\TARP\model_weights\stutter_model.pt"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_WEIGHTS_PATH = os.path.join(BASE_DIR, "model_weights", "stutter_model.pt")
+DEFAULT_BUFFER_DIR = os.path.join(BASE_DIR, "audio_buffer")
 
 class AudioChunkAccumulator:
     """
@@ -57,8 +59,8 @@ class AudioChunkAccumulator:
             del self.buffers[session_id]
 
 class AudioReceiver:
-    def __init__(self, buffer_dir=r"c:\Users\amare\Downloads\TARP\audio_buffer"):
-        self.buffer_dir = buffer_dir
+    def __init__(self, buffer_dir=None):
+        self.buffer_dir = buffer_dir if buffer_dir else DEFAULT_BUFFER_DIR
         os.makedirs(self.buffer_dir, exist_ok=True)
 
     def stage_file(self, file_obj, filename):

@@ -88,11 +88,16 @@ class DisfluencyDataset(Dataset):
         tensor = torch.tensor(spec, dtype=torch.float32).unsqueeze(0)  # Shape: (1, 64, 64)
         return tensor, label
 
-def load_or_create_dataset(dataset_dir=r"c:\Users\amare\Downloads\TARP\dataset", num_samples_per_class=300):
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DEFAULT_DATASET_DIR = os.path.join(BASE_DIR, "dataset")
+
+def load_or_create_dataset(dataset_dir=None, num_samples_per_class=300):
     """
     Loads custom WAV files from dataset_dir if present, or creates synthetic SEP-28k disfluency dataset.
     Returns audio_list, labels_list
     """
+    if dataset_dir is None:
+        dataset_dir = DEFAULT_DATASET_DIR
     audio_list = []
     labels_list = []
     
