@@ -6,8 +6,9 @@ __pycache__/
 # Local SQLite databases & temporary audio buffers
 *.db
 *.wav
-audio_buffer/*
-!audio_buffer/.gitkeep
+*.mp3
+data/raw/
+audio_buffer/
 diagrams/
 
 # Build & Temporary Scripts

@@ -1,0 +1,21 @@
+{
+  "model_version": "voxflow-model-v1.0",
+  "winning_architecture": "SVM (MFCC Baseline)",
+  "sample_rate": 16000,
+  "window_duration_sec": 3.0,
+  "step_sec": 1.0,
+  "validation_macro_f1": 0.3425986842105263,
+  "validation_accuracy": 0.4766355140186916,
+  "class_mapping": {
+    "Fluent": 0,
+    "Repetition": 1,
+    "Prolongation": 2,
+    "Block": 3
+  },
+  "classes": [
+    "Fluent",
+    "Repetition",
+    "Prolongation",
+    "Block"
+  ]
+}
